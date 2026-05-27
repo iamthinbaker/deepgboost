@@ -2,8 +2,8 @@ cff-version: 1.2.0
 message: "If you use DeepGBoost in your research, please cite the following paper."
 type: software
 title: DeepGBoost
-version: 0.3.1
-repository-code: https://github.com/delgadopanadero/deepgboost
+version: 0.3.3
+repository-code: https://github.com/iamthinbaker/deepgboost
 license: Apache-2.0
 preferred-citation:
   type: article

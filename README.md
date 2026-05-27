@@ -1,8 +1,8 @@
 #  DeepGBoost
 
 [![PyPI version](https://badge.fury.io/py/deepgboost.svg)](https://pypi.python.org/pypi/deepgboost/)
-[![CI](https://github.com/delgadopanadero/deepgboost/actions/workflows/ci.yml/badge.svg)](https://github.com/delgadopanadero/deepgboost/actions/workflows/ci.yml)
-[![Coverage](https://codecov.io/gh/delgadopanadero/deepgboost/branch/main/graph/badge.svg)](https://codecov.io/gh/delgadopanadero/deepgboost)
+[![CI](https://github.com/iamthinbaker/deepgboost/actions/workflows/ci.yml/badge.svg)](https://github.com/iamthinbaker/deepgboost/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/iamthinbaker/deepgboost/branch/main/graph/badge.svg)](https://codecov.io/gh/iamthinbaker/deepgboost)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![PythonVersion](https://img.shields.io/pypi/pyversions/deepgboost.svg)](https://pypi.org/project/deepgboost/)
 
@@ -25,7 +25,7 @@ pip install deepgboost[plotting]
 To install from source with development dependencies:
 
 ```bash
-git clone https://github.com/delgadopanadero/deepgboost.git
+git clone https://github.com/iamthinbaker/deepgboost.git
 cd deepgboost
 pip install -e .
 ```

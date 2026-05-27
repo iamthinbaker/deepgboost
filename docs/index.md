@@ -11,8 +11,8 @@ tags:
 # DeepGBoost
 
 [![PyPI version](https://badge.fury.io/py/deepgboost.svg)](https://pypi.python.org/pypi/deepgboost/)
-[![CI](https://github.com/delgadopanadero/deepgboost/actions/workflows/ci.yml/badge.svg)](https://github.com/delgadopanadero/deepgboost/actions/workflows/ci.yml)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/delgadopanadero/deepgboost/blob/main/LICENSE)
+[![CI](https://github.com/iamthinbaker/deepgboost/actions/workflows/ci.yml/badge.svg)](https://github.com/iamthinbaker/deepgboost/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/iamthinbaker/deepgboost/blob/main/LICENSE)
 
 Machine learning algorithm based on gradient boosting forest that merges the power of tree ensembles with neural network architectures.
 
@@ -64,7 +64,7 @@ pip install deepgboost[plotting]
 Install from source with development dependencies:
 
 ```bash
-git clone https://github.com/delgadopanadero/deepgboost.git
+git clone https://github.com/iamthinbaker/deepgboost.git
 cd deepgboost
 pip install -e ".[dev]"
 ```
