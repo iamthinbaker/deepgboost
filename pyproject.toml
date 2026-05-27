@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "deepgboost"
-version = "0.3.2"
+version = "0.3.4"
 description = "Distributed Gradient Boosting Forest — deep graph tree ensemble algorithm"
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -53,6 +53,7 @@ docs = [
     "cairosvg>=2.7",
     "matplotlib>=3.7",
 ]
+
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:project.version"]
