@@ -54,6 +54,12 @@ docs = [
     "matplotlib>=3.7",
 ]
 
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+branch = "main"
+changelog_file = "CHANGELOG.md"
+build_command = "pip install build && python -m build"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
