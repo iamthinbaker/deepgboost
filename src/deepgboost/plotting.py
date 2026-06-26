@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 def plot_importance(
     model,
+    X,
     *,
     max_features: int = 20,
     importance_type: str = "gain",
@@ -31,12 +32,15 @@ def plot_importance(
 
     Parameters
     ----------
-    model : DGBFModel, DeepGBoostRegressor, or DeepGBoostClassifier
-        Any fitted DeepGBoost object with a ``feature_importances_`` attribute.
+    model : DeepGBoostRegressor, DeepGBoostClassifier, or DeepGBoostMultiClassifier
+        Any fitted DeepGBoost estimator that exposes ``feature_contributions``.
+    X : array-like of shape (n_samples, n_features)
+        Sample matrix used to compute per-feature contributions.  A representative
+        subset (e.g. the training set) is recommended.
     max_features : int
         Maximum number of features to display (sorted by importance).
     importance_type : str
-        Currently only ``"gain"`` (impurity-based) is supported.
+        Reserved for future use; currently ignored.
     feature_names : list of str or None
         Names for each feature.  Falls back to ``f0``, ``f1``, … if not given.
     title : str
@@ -62,23 +66,14 @@ def plot_importance(
             "Install it with: pip install deepgboost[plotting]",
         ) from exc
 
-    # Retrieve importances from various model types
-    importances: np.ndarray | None = None
-
-    if hasattr(model, "feature_importances_"):
-        importances = model.feature_importances_
-    elif hasattr(model, "_model") and model._model is not None:
-        importances = model._model.feature_importances_
-    else:
+    if not hasattr(model, "feature_contributions"):
         raise ValueError(
-            "Cannot extract feature importances from the provided model. "
+            "model does not expose feature_contributions(). "
             "Make sure the model is fitted.",
         )
 
-    if importances is None:
-        raise ValueError(
-            "Model has not been fitted or feature importances are None.",
-        )
+    _, contributions = model.feature_contributions(np.asarray(X))
+    importances = np.abs(contributions).mean(axis=0)
 
     n_features = len(importances)
 
