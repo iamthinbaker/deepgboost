@@ -114,7 +114,6 @@ class DGBFModel:
         self.weights_: list[np.ndarray] = []
         self.linear_models_: list[LinearUpdater] = []
         self.prior_: float = 0.0
-        self.feature_importances_: np.ndarray | None = None
         self.n_features_in_: int = 0
         self.evals_result_: dict = {}
 
@@ -174,7 +173,6 @@ class DGBFModel:
         self.evals_result_ = {}
         self._layer_cond_numbers_: list[float] = []
         self._layer_n_trees_: list[int] = []
-        feature_importance_accum = np.zeros(n_features)
 
         # Initialise eval result containers
         if evals:
@@ -237,7 +235,10 @@ class DGBFModel:
 
             # Adaptive width: halve n_trees for the next layer when the
             # predictor matrix is ill-conditioned and adaptation is enabled.
-            if self.cond_threshold is not None and layer_cond > self.cond_threshold:
+            if (
+                self.cond_threshold is not None
+                and layer_cond > self.cond_threshold
+            ):
                 _effective_n_trees = max(1, _effective_n_trees // 2)
             else:
                 _effective_n_trees = self.n_trees
@@ -262,10 +263,6 @@ class DGBFModel:
                 )
                 self.linear_models_.append(lin)
 
-            # --- Accumulate feature importances -------------------------
-            for tree in new_layer:
-                feature_importance_accum += tree.feature_importances_
-
             # --- Eval sets ----------------------------------------------
             if evals:
                 for X_val, y_val, name in evals:
@@ -284,12 +281,6 @@ class DGBFModel:
                     stop = True
             if stop:
                 break
-
-        # Normalise feature importances
-        total = feature_importance_accum.sum()
-        self.feature_importances_ = (
-            feature_importance_accum / total if total > 0 else feature_importance_accum
-        )
 
         # After-training callbacks
         for cb in callbacks:
@@ -436,6 +427,34 @@ class DGBFModel:
         """
         self._check_is_fitted()
         return self._predictor.predict_raw(self, X)
+
+    def feature_contributions(
+        self,
+        X: np.ndarray,
+    ) -> tuple[float, np.ndarray]:
+        """
+        Decompose ensemble predictions into a scalar bias and per-feature contributions.
+
+        Parameters
+        ----------
+        X : np.ndarray of shape (n_samples, n_features)
+
+        Returns
+        -------
+        bias : float
+            The model prior (mean of training targets).
+        contributions : ndarray of shape (n_samples, n_features)
+            Weighted sum of per-tree per-feature contributions across all layers.
+        """
+        self._check_is_fitted()
+        n_samples = X.shape[0]
+        contributions = np.zeros((n_samples, self.n_features_in_))
+        for layer_idx, layer in enumerate(self.graph_):
+            for t, tree in enumerate(layer):
+                w = self.weights_[layer_idx][t]
+                _, tree_contrib = tree.feature_contributions(X)
+                contributions += w * tree_contrib
+        return self.prior_, contributions
 
     # ------------------------------------------------------------------
     # Utilities

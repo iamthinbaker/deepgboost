@@ -92,12 +92,14 @@ class TestDeepGBoostMultiClassifierMulticlass:
         first_tree = clf.model_.graph_[0][0][0]
         assert first_tree._tree.n_outputs_ == 1
 
-    def test_feature_importances(self, multiclass_split):
+    def test_feature_contributions(self, multiclass_split):
         X_train, _, y_train, _ = multiclass_split
         clf = clone(self._CLF).fit(X_train, y_train)
-        fi = clf.feature_importances_
-        assert fi.shape == (X_train.shape[1],)
-        np.testing.assert_allclose(fi.sum(), 1.0, atol=1e-6)
+        bias, contribs = clf.feature_contributions(X_train)
+        assert bias.shape == (len(np.unique(y_train)),)
+        assert contribs.shape == (X_train.shape[0], X_train.shape[1])
+        assert np.all(np.isfinite(contribs))
+        np.testing.assert_allclose(bias, clf.model_.prior_, atol=1e-10)
 
     def test_pickle_roundtrip(self, multiclass_split):
         X_train, X_test, y_train, _ = multiclass_split
@@ -128,7 +130,11 @@ class TestDeepGBoostMultiClassifierMulticlass:
                 ("scaler", StandardScaler()),
                 (
                     "clf",
-                    DeepGBoostMultiClassifier(n_trees=3, n_layers=5, random_state=0),
+                    DeepGBoostMultiClassifier(
+                        n_trees=3,
+                        n_layers=5,
+                        random_state=0,
+                    ),
                 ),
             ],
         )
@@ -146,7 +152,10 @@ class TestDeepGBoostMultiClassifierMulticlass:
             random_state=42,
         ).fit(X_train, y_train)
         clf_multi = clone(self._CLF).fit(X_train, y_train)
-        assert clf_multi.score(X_test, y_test) >= clf_ovr.score(X_test, y_test) - 0.05
+        assert (
+            clf_multi.score(X_test, y_test)
+            >= clf_ovr.score(X_test, y_test) - 0.05
+        )
 
 
 # ---------------------------------------------------------------------------

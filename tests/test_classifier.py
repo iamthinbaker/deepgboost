@@ -94,13 +94,14 @@ class TestDeepGBoostClassifierBinary:
         acc = clf.score(X_test, y_test)
         assert acc > 0.85, f"Binary accuracy should be > 0.85, got {acc:.4f}"
 
-    def test_feature_importances_shape(self, binary_split):
+    def test_feature_contributions_shape(self, binary_split):
         X_train, _, y_train, _ = binary_split
         clf = clone(self._CLF)
         clf.fit(X_train, y_train)
-        fi = clf.feature_importances_
-        assert fi.shape == (X_train.shape[1],)
-        assert abs(fi.sum() - 1.0) < 1e-6
+        bias, contribs = clf.feature_contributions(X_train)
+        assert isinstance(bias, float)
+        assert contribs.shape == (X_train.shape[0], X_train.shape[1])
+        assert np.all(np.isfinite(contribs))
 
 
 # ---------------------------------------------------------------------------
@@ -136,7 +137,18 @@ class TestDeepGBoostClassifierMulticlass:
         clf = clone(self._CLF)
         clf.fit(X_train, y_train)
         acc = clf.score(X_test, y_test)
-        assert acc > 0.85, f"Multiclass accuracy should be > 0.85, got {acc:.4f}"
+        assert acc > 0.85, (
+            f"Multiclass accuracy should be > 0.85, got {acc:.4f}"
+        )
+
+    def test_feature_contributions_shape(self, multiclass_split):
+        X_train, _, y_train, _ = multiclass_split
+        clf = clone(self._CLF)
+        clf.fit(X_train, y_train)
+        bias, contribs = clf.feature_contributions(X_train)
+        assert bias.shape == (clf.n_classes_,)
+        assert contribs.shape == (X_train.shape[0], X_train.shape[1])
+        assert np.all(np.isfinite(contribs))
 
 
 # ---------------------------------------------------------------------------
@@ -334,7 +346,13 @@ class TestDeepGBoostClassifierPipeline:
                 ("model", clone(self._CLF)),
             ],
         )
-        scores = cross_val_score(pipe, X_train, y_train, cv=3, scoring="accuracy")
+        scores = cross_val_score(
+            pipe,
+            X_train,
+            y_train,
+            cv=3,
+            scoring="accuracy",
+        )
         assert scores.mean() > 0.8, (
             f"Mean CV accuracy should be > 0.8, got {scores.mean():.4f}"
         )

@@ -86,7 +86,6 @@ class DGBFMultiOutputModel:
         # weights_[l] has shape (K, n_trees): per-class combination weights
         self.weights_: list[np.ndarray] = []
         self.prior_: np.ndarray = np.array([])
-        self.feature_importances_: np.ndarray | None = None
         self.n_features_in_: int = 0
         self.evals_result_: dict = {}
 
@@ -135,7 +134,6 @@ class DGBFMultiOutputModel:
         self.n_features_in_ = n_features
         self.evals_result_ = {}
         self._layer_cond_numbers_: list[float] = []
-        feature_importance_accum = np.zeros(n_features)
 
         if evals:
             for _, _, name in evals:
@@ -176,11 +174,6 @@ class DGBFMultiOutputModel:
             self.weights_.append(new_weights)
             self._layer_cond_numbers_.append(layer_cond)
 
-            # new_layer is list[list[TreeUpdater]] of shape (K, n_trees)
-            for class_trees in new_layer:
-                for tree in class_trees:
-                    feature_importance_accum += tree.feature_importances_
-
             if evals:
                 for X_val, y_val, name in evals:
                     F_val = self.predict_raw(X_val)  # (n_val, K)
@@ -201,11 +194,6 @@ class DGBFMultiOutputModel:
                     stop = True
             if stop:
                 break
-
-        total = feature_importance_accum.sum()
-        self.feature_importances_ = (
-            feature_importance_accum / total if total > 0 else feature_importance_accum
-        )
 
         for cb in callbacks:
             cb.after_training(self)
@@ -331,6 +319,35 @@ class DGBFMultiOutputModel:
                     )
 
         return accum  # (n_samples, K)
+
+    def feature_contributions(
+        self,
+        X: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Decompose ensemble predictions into per-class bias and per-feature contributions.
+
+        Parameters
+        ----------
+        X : np.ndarray of shape (n_samples, n_features)
+
+        Returns
+        -------
+        bias : ndarray of shape (K,)
+            Per-class prior values.
+        contributions : ndarray of shape (n_samples, n_features)
+            Weighted sum of per-tree contributions summed across all classes and layers.
+        """
+        self._check_is_fitted()
+        n_samples = X.shape[0]
+        contributions = np.zeros((n_samples, self.n_features_in_))
+        for layer_idx, layer in enumerate(self.graph_):
+            for k, class_trees in enumerate(layer):
+                for t, tree in enumerate(class_trees):
+                    w = self.weights_[layer_idx][k, t]
+                    _, tree_contrib = tree.feature_contributions(X)
+                    contributions += w * tree_contrib
+        return self.prior_, contributions
 
     # ------------------------------------------------------------------
     # Utilities

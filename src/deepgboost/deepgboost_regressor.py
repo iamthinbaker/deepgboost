@@ -222,15 +222,26 @@ class DeepGBoostRegressor(
 
         return R2ScoreMetric()(np.asarray(y).ravel(), self.predict(X))
 
-    @property
-    def feature_importances_(self) -> np.ndarray:
-        """Impurity-based feature importances from the underlying DGBF model."""
+    def feature_contributions(
+        self,
+        X: ArrayLike,
+    ) -> tuple[float, np.ndarray]:
+        """
+        Decompose predictions into a scalar bias and per-feature contributions.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+
+        Returns
+        -------
+        bias : float
+            Model prior (mean of training targets).
+        contributions : ndarray of shape (n_samples, n_features)
+            Additive per-feature contribution for each sample.
+        """
         check_is_fitted(self, "model_")
-
-        if (feature_importances := self.model_.feature_importances_) is None:
-            raise Exception()
-
-        return feature_importances
+        return self.model_.feature_contributions(np.asarray(X))
 
     @property
     def evals_result_(self) -> dict:

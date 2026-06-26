@@ -277,19 +277,42 @@ class DeepGBoostClassifier(
         return self.label_encoder_.inverse_transform(indices)
 
     def score(
-        self, X: ArrayLike, y: ArrayLike, sample_weight: ArrayLike | None = None,
+        self,
+        X: ArrayLike,
+        y: ArrayLike,
+        sample_weight: ArrayLike | None = None,
     ) -> float:
         """Return accuracy."""
         return float(np.mean(self.predict(X) == np.asarray(y)))
 
-    @property
-    def feature_importances_(self) -> np.ndarray:
-        """Average feature importances across all binary sub-models."""
+    def feature_contributions(
+        self,
+        X: ArrayLike,
+    ) -> tuple[float | np.ndarray, np.ndarray]:
+        """
+        Decompose predictions into bias and per-feature contributions.
+
+        For binary classification, delegates to the single underlying model.
+        For multiclass OVR, contributions are averaged across all per-class models.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+
+        Returns
+        -------
+        bias : float or ndarray
+            Float for binary; ndarray of shape (n_classes,) for OVR.
+        contributions : ndarray of shape (n_samples, n_features)
+            Additive per-feature contribution for each sample.
+        """
         check_is_fitted(self, "classes_")
+        X_arr = np.asarray(X)
         if self.n_classes_ == 2:
-            return self._binary_model.feature_importances_
-        importances = np.mean(
-            [m.feature_importances_ for m in self._ovr_models],
-            axis=0,
-        )
-        return importances
+            return self._binary_model.feature_contributions(X_arr)
+        all_contribs = [
+            m.feature_contributions(X_arr) for m in self._ovr_models
+        ]
+        bias = np.array([b for b, _ in all_contribs])
+        contributions = np.mean([c for _, c in all_contribs], axis=0)
+        return bias, contributions

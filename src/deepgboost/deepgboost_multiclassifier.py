@@ -216,13 +216,31 @@ class DeepGBoostMultiClassifier(
         return self.label_encoder_.inverse_transform(indices)
 
     def score(
-        self, X: ArrayLike, y: ArrayLike, sample_weight: ArrayLike | None = None,
+        self,
+        X: ArrayLike,
+        y: ArrayLike,
+        sample_weight: ArrayLike | None = None,
     ) -> float:
         """Return accuracy."""
         return float(np.mean(self.predict(X) == np.asarray(y)))
 
-    @property
-    def feature_importances_(self) -> np.ndarray:
-        """Impurity-based feature importances averaged across all trees and layers."""
+    def feature_contributions(
+        self,
+        X: ArrayLike,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Decompose predictions into per-class bias and per-feature contributions.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+
+        Returns
+        -------
+        bias : ndarray of shape (K,)
+            Per-class prior values.
+        contributions : ndarray of shape (n_samples, n_features)
+            Additive per-feature contribution for each sample, aggregated across classes.
+        """
         check_is_fitted(self, "model_")
-        return self.model_.feature_importances_
+        return self.model_.feature_contributions(np.asarray(X))

@@ -1,7 +1,7 @@
 """
 Tree updater for DeepGBoost.
 
-Each ``TreeUpdater`` wraps a single ``DecisionTreeRegressor`` and trains it
+Each ``TreeUpdater`` wraps a single ``AditiveDecisionTree`` and trains it
 on a 1-D pseudo-residual vector, implementing the bagging base learner
 described in Algorithm 1 of the paper.
 """
@@ -9,7 +9,8 @@ described in Algorithm 1 of the paper.
 from __future__ import annotations
 
 import numpy as np
-from sklearn.tree import DecisionTreeRegressor
+
+from deepgboost.tree.aditive_decision_tree import AditiveDecisionTree
 
 
 class TreeUpdater:
@@ -22,7 +23,7 @@ class TreeUpdater:
         Maximum depth of the underlying decision tree.
     max_features : int, float, str or None
         Number of features to consider at each split (passed directly to
-        ``DecisionTreeRegressor``).  Use ``"sqrt"`` for the Random Forest
+        ``AditiveDecisionTree``).  Use ``"sqrt"`` for the Random Forest
         default.
     min_weight_fraction_leaf : float, default=0.0
         Minimum fraction of the total (weighted) number of samples required
@@ -45,7 +46,7 @@ class TreeUpdater:
         self.max_features = max_features
         self.min_weight_fraction_leaf = min_weight_fraction_leaf
         self.random_state = random_state
-        self._tree = DecisionTreeRegressor(
+        self._tree = AditiveDecisionTree(
             max_depth=max_depth,
             max_features=max_features,
             min_weight_fraction_leaf=min_weight_fraction_leaf,
@@ -102,11 +103,26 @@ class TreeUpdater:
         return out
 
     @property
-    def feature_importances_(self) -> np.ndarray:
-        """Impurity-based feature importances from the underlying tree."""
-        return self._tree.feature_importances_
-
-    @property
     def n_features_in_(self) -> int:
         """Number of features seen during fit."""
         return self._tree.n_features_in_
+
+    def feature_contributions(
+        self,
+        X: np.ndarray,
+    ) -> tuple[float, np.ndarray]:
+        """
+        Decompose predictions into a scalar bias and per-feature contributions.
+
+        Parameters
+        ----------
+        X : np.ndarray of shape (n_samples, n_features)
+
+        Returns
+        -------
+        bias : float
+            Root-node prediction value.
+        contributions : ndarray of shape (n_samples, n_features)
+            Additive per-feature contribution for each sample.
+        """
+        return self._tree.feature_contributions(X)

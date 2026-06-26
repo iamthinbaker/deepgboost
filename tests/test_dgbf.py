@@ -17,6 +17,7 @@ from sklearn.model_selection import train_test_split
 from deepgboost import DeepGBoostRegressor
 from deepgboost.dgbf.dgbf import DGBFModel
 from deepgboost.predictor.predictor import DeepGBoostPredictor
+from deepgboost.tree.aditive_decision_tree import AditiveDecisionTree
 from deepgboost.tree.updater import TreeUpdater
 
 
@@ -188,4 +189,93 @@ class TestRandomForestEquivalence:
                 "DGB predictor with injected sklearn RF trees must reproduce "
                 "RandomForestRegressor.predict() exactly."
             ),
+        )
+
+
+# ---------------------------------------------------------------------------
+# AditiveDecisionTree — feature_contributions
+# ---------------------------------------------------------------------------
+
+
+class TestAditiveDecisionTreeContributions:
+    @pytest.fixture(scope="class")
+    def fitted_tree(self, diabetes_split):
+        X_train, _, y_train, _ = diabetes_split
+        tree = AditiveDecisionTree(max_depth=3, random_state=0)
+        tree.fit(X_train, y_train)
+        return tree, X_train
+
+    def test_shapes(self, fitted_tree):
+        tree, X = fitted_tree
+        _, contributions = tree.feature_contributions(X)
+        assert contributions.shape == (X.shape[0], X.shape[1])
+
+    def test_decomposition_identity(self, fitted_tree):
+        """bias + contributions[i].sum() must equal predict(X)[i] exactly."""
+        tree, X = fitted_tree
+        bias, contributions = tree.feature_contributions(X)
+        np.testing.assert_allclose(
+            bias + contributions.sum(axis=1),
+            tree.predict(X),
+            atol=1e-10,
+        )
+
+    def test_bias_equals_root_node_value(self, fitted_tree):
+        tree, X = fitted_tree
+        bias, _ = tree.feature_contributions(X)
+        assert bias == pytest.approx(float(tree.tree_.value[0, 0, 0]))
+
+    def test_stump_only_split_feature_contributes(self):
+        """With max_depth=1 each sample crosses exactly one split."""
+        rng = np.random.default_rng(0)
+        X = rng.standard_normal((100, 5))
+        y = X[:, 2] + rng.standard_normal(100) * 0.1
+        tree = AditiveDecisionTree(max_depth=1, random_state=0)
+        tree.fit(X, y)
+        _, contributions = tree.feature_contributions(X)
+        assert np.all((contributions != 0).sum(axis=1) <= 1)
+
+    def test_raises_before_fit(self, diabetes_split):
+        X_train, _, _, _ = diabetes_split
+        with pytest.raises(Exception):
+            AditiveDecisionTree(max_depth=3).feature_contributions(X_train)
+
+
+# ---------------------------------------------------------------------------
+# TreeUpdater — feature_contributions
+# ---------------------------------------------------------------------------
+
+
+class TestTreeUpdaterContributions:
+    @pytest.fixture(scope="class")
+    def fitted_updater(self, diabetes_split):
+        X_train, _, y_train, _ = diabetes_split
+        updater = TreeUpdater(max_depth=3, random_state=0)
+        updater.fit(X_train, y_train)
+        return updater, X_train
+
+    def test_decomposition_identity(self, fitted_updater):
+        """Must preserve the AditiveDecisionTree decomposition identity."""
+        updater, X = fitted_updater
+        bias, contributions = updater.feature_contributions(X)
+        np.testing.assert_allclose(
+            bias + contributions.sum(axis=1),
+            updater.predict(X)[:, 0],
+            atol=1e-10,
+        )
+
+    def test_with_sample_weight(self, diabetes_split):
+        X_train, _, y_train, _ = diabetes_split
+        weights = np.random.default_rng(1).uniform(
+            0.5,
+            1.5,
+            size=X_train.shape[0],
+        )
+        updater = TreeUpdater(max_depth=3, random_state=0)
+        updater.fit(X_train, y_train, sample_weight=weights)
+        bias, contributions = updater.feature_contributions(X_train)
+        np.testing.assert_allclose(
+            bias + contributions.sum(axis=1),
+            updater.predict(X_train)[:, 0],
+            atol=1e-10,
         )

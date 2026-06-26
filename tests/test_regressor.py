@@ -72,25 +72,39 @@ class TestDeepGBoostRegressorBasic:
 # ---------------------------------------------------------------------------
 
 
-class TestDeepGBoostRegressorFeatureImportances:
-    def test_importances_shape(self, diabetes_split):
-        X_train, _, y_train, _ = diabetes_split
-        reg = DeepGBoostRegressor(n_trees=3, n_layers=3, random_state=0)
-        reg.fit(X_train, y_train)
-        fi = reg.feature_importances_
-        assert fi.shape == (X_train.shape[1],)
+class TestDeepGBoostRegressorFeatureContributions:
+    _REG = DeepGBoostRegressor(
+        n_trees=3,
+        n_layers=3,
+        max_depth=3,
+        random_state=0,
+    )
 
-    def test_importances_sum_to_one(self, diabetes_split):
+    def test_contributions_shape(self, diabetes_split):
         X_train, _, y_train, _ = diabetes_split
-        reg = DeepGBoostRegressor(n_trees=3, n_layers=3, random_state=0)
+        reg = clone(self._REG)
         reg.fit(X_train, y_train)
-        assert abs(reg.feature_importances_.sum() - 1.0) < 1e-6
+        _, contribs = reg.feature_contributions(X_train)
+        assert contribs.shape == (X_train.shape[0], X_train.shape[1])
 
-    def test_importances_non_negative(self, diabetes_split):
+    def test_bias_equals_prior(self, diabetes_split):
         X_train, _, y_train, _ = diabetes_split
-        reg = DeepGBoostRegressor(n_trees=3, n_layers=3, random_state=0)
+        reg = clone(self._REG)
         reg.fit(X_train, y_train)
-        assert np.all(reg.feature_importances_ >= 0)
+        bias, _ = reg.feature_contributions(X_train)
+        assert bias == pytest.approx(reg.model_.prior_)
+
+    def test_contributions_finite(self, diabetes_split):
+        X_train, _, y_train, _ = diabetes_split
+        reg = clone(self._REG)
+        reg.fit(X_train, y_train)
+        _, contribs = reg.feature_contributions(X_train)
+        assert np.all(np.isfinite(contribs))
+
+    def test_raises_before_fit(self, diabetes_split):
+        X_train, _, _, _ = diabetes_split
+        with pytest.raises(Exception):
+            clone(self._REG).feature_contributions(X_train)
 
 
 # ---------------------------------------------------------------------------

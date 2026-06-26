@@ -1,6 +1,48 @@
 # CHANGELOG
 
 
+## Unreleased
+
+### Features
+
+- **`feature_contributions(X)` API** — every model now exposes a `feature_contributions(X)`
+  method that decomposes each prediction into an additive scalar bias (the training-set prior)
+  and a per-sample, per-feature contribution matrix of shape `(n_samples, n_features)`.
+  The decomposition is exact: `bias + contributions[i].sum() == predict(X)[i]` for every sample.
+  Applies to `DeepGBoostRegressor`, `DeepGBoostClassifier`, `DeepGBoostMultiClassifier`,
+  `DGBFModel`, `DGBFMultiOutputModel`, and `TreeUpdater`.
+
+- **`AditiveDecisionTree`** — new internal tree class (`deepgboost.tree.aditive_decision_tree`)
+  that implements the exact prediction-decomposition algorithm.  `TreeUpdater` now wraps
+  `AditiveDecisionTree` instead of sklearn's `DecisionTreeRegressor`.
+
+### Breaking Changes
+
+- **`feature_importances_` removed** — the `feature_importances_` property has been removed from
+  all model classes (`DeepGBoostRegressor`, `DeepGBoostClassifier`, `DeepGBoostMultiClassifier`,
+  `DGBFModel`, `DGBFMultiOutputModel`, `TreeUpdater`).  Use `feature_contributions(X)` instead
+  and derive a global importance score as `np.abs(contributions).mean(axis=0)`.
+
+### Tests
+
+- Replaced `TestDeepGBoostRegressorFeatureImportances` with
+  `TestDeepGBoostRegressorFeatureContributions`; verifies shape, finiteness, bias-equals-prior,
+  and raises-before-fit.
+- Updated `test_classifier.py` (`test_feature_contributions_shape`) for binary and multiclass paths.
+- Updated `test_multiclassifier.py` (`test_feature_contributions`) to assert bias shape, finiteness,
+  and exact prior equality.
+- Added `TestAditiveDecisionTreeContributions` in `test_dgbf.py`: shape, decomposition identity,
+  root-node bias, depth-1 stump sparsity, and raises-before-fit.
+- Added `TestTreeUpdaterContributions` in `test_dgbf.py`: decomposition identity with and without
+  sample weights.
+
+### Examples
+
+- `examples/regressor.ipynb` rewritten: migrated from Diabetes to California Housing dataset,
+  added `feature_contributions` walkthrough, updated `plot_importance` call (removed stale
+  `X_train` positional argument).
+
+
 ## v0.3.4 (2026-05-27)
 
 ### Bug Fixes
